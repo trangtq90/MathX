@@ -1,0 +1,5 @@
+{
+  "name": "MathX - Management System",
+  "description": "A comprehensive management system for MathX Tutoring Center (Grades 6-12), featuring student management, tuition tracking, document sharing, and AI-powered exam generation.",
+  "requestFramePermissions": []
+}
