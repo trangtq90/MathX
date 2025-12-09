@@ -17,9 +17,10 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 // Routes API
 app.use("/api", routes);
 
-const PORT = process.env.PORT || 4000;
+// Cập nhật cổng mặc định thành 5001
+const PORT = process.env.PORT || 5001;
 
-// Kết nối DB trước khi chạy Server
+// Kết nối MongoDB trước khi chạy Server
 connectDB()
   .then(() => {
     app.listen(PORT, () => {

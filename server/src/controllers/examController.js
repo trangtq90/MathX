@@ -1,24 +1,20 @@
-import { prisma } from "../config/db.js";
+import { Exam } from "../models/examModel.js";
 
 export const getExams = async (req, res) => {
   try {
-    const exams = await prisma.exam.findMany();
-    // Parse JSON string -> Object
-    const parsedExams = exams.map((e) => ({
-      ...e,
-      questions: JSON.parse(e.questions),
-    }));
-    res.json(parsedExams);
+    const exams = await Exam.find().sort({ createdAt: -1 });
+    // Mongoose trả về JSON object thuần, không cần parse string như SQLite
+    res.json(exams);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
 export const createExam = async (req, res) => {
-  const { questions, id, ...rest } = req.body;
-  const dataToSave = { ...rest, questions: JSON.stringify(questions) };
+  // MongoDB lưu thẳng Array/Object, không cần stringify 'questions'
   try {
-    const exam = await prisma.exam.create({ data: dataToSave });
+    const { id, ...data } = req.body; // Bỏ id client gửi nếu có
+    const exam = await Exam.create(data);
     res.status(201).json(exam);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -27,10 +23,8 @@ export const createExam = async (req, res) => {
 
 export const updateExam = async (req, res) => {
   const { id } = req.params;
-  const { questions, ...rest } = req.body;
-  const dataToSave = { ...rest, questions: JSON.stringify(questions) };
   try {
-    const exam = await prisma.exam.update({ where: { id }, data: dataToSave });
+    const exam = await Exam.findByIdAndUpdate(id, req.body, { new: true });
     res.json(exam);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -40,7 +34,7 @@ export const updateExam = async (req, res) => {
 export const deleteExam = async (req, res) => {
   const { id } = req.params;
   try {
-    await prisma.exam.delete({ where: { id } });
+    await Exam.findByIdAndDelete(id);
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ message: error.message });

@@ -1,8 +1,8 @@
-import { prisma } from "../config/db.js";
+import { Document } from "../models/documentModel.js";
 
 export const getDocuments = async (req, res) => {
   try {
-    const docs = await prisma.document.findMany();
+    const docs = await Document.find().sort({ createdAt: -1 });
     res.json(docs);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -10,9 +10,9 @@ export const getDocuments = async (req, res) => {
 };
 
 export const createDocument = async (req, res) => {
-  const { id, ...data } = req.body;
   try {
-    const doc = await prisma.document.create({ data });
+    const { id, ...data } = req.body;
+    const doc = await Document.create(data);
     res.status(201).json(doc);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -22,10 +22,7 @@ export const createDocument = async (req, res) => {
 export const updateDocument = async (req, res) => {
   const { id } = req.params;
   try {
-    const doc = await prisma.document.update({
-      where: { id },
-      data: req.body,
-    });
+    const doc = await Document.findByIdAndUpdate(id, req.body, { new: true });
     res.json(doc);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -35,7 +32,7 @@ export const updateDocument = async (req, res) => {
 export const deleteDocument = async (req, res) => {
   const { id } = req.params;
   try {
-    await prisma.document.delete({ where: { id } });
+    await Document.findByIdAndDelete(id);
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ message: error.message });
