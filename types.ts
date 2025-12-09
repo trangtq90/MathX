@@ -53,6 +53,8 @@ export interface DocumentFile {
   uploadDate: string;
   url: string;
   size: string;
+  grade?: string;
+  content?: string; // Base64 data string for real storage simulation
 }
 
 export interface Course {
