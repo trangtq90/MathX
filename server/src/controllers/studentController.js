@@ -11,7 +11,6 @@ export const getStudents = async (req, res) => {
 
 export const createStudent = async (req, res) => {
   try {
-    // Mongoose tự sinh _id
     const student = await Student.create(req.body);
     res.status(201).json(student);
   } catch (error) {
@@ -22,7 +21,14 @@ export const createStudent = async (req, res) => {
 export const updateStudent = async (req, res) => {
   const { id } = req.params;
   try {
+    // Sử dụng { new: true } để trả về dữ liệu sau khi update
+    // Dữ liệu trong req.body (bao gồm status) sẽ được cập nhật
     const student = await Student.findByIdAndUpdate(id, req.body, { new: true });
+    
+    if (!student) {
+        return res.status(404).json({ message: "Không tìm thấy học sinh" });
+    }
+
     res.json(student);
   } catch (error) {
     res.status(400).json({ message: error.message });

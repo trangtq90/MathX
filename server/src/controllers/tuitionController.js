@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { Tuition } from "../models/tuitionModel.js";
 
 export const getTuitions = async (req, res) => {
@@ -40,4 +41,3 @@ export const createOrUpdateTuition = async (req, res) => {
     res.status(400).json({ message: error.message });
   }
 };
-import mongoose from "mongoose"; // Import cần thiết cho check ObjectId

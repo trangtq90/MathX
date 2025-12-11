@@ -20,12 +20,15 @@ export const StudentsPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 5;
 
+  // Form State
   const [formData, setFormData] = useState<Partial<Student>>({
     fullName: '',
     grade: Grade.SIX,
     status: StudentStatus.ACTIVE,
     phone: '',
-    startDate: new Date().toISOString().split('T')[0]
+    parentName: '',
+    startDate: new Date().toISOString().split('T')[0],
+    avatar: ''
   });
 
   useEffect(() => {
@@ -38,9 +41,15 @@ export const StudentsPage = () => {
 
   const loadStudents = async () => {
     setLoading(true);
-    const data = await studentService.getAll();
-    setStudents(data);
-    setLoading(false);
+    try {
+        const data = await studentService.getAll();
+        setStudents(data);
+    } catch (error) {
+        console.error("Failed to load students", error);
+        setToast({ msg: "Không thể tải danh sách học sinh", type: 'error' });
+    } finally {
+        setLoading(false);
+    }
   };
 
   const handleViewStudent = async (student: Student) => {
@@ -62,7 +71,9 @@ export const StudentsPage = () => {
         grade: Grade.SIX,
         status: StudentStatus.ACTIVE,
         phone: '',
-        startDate: new Date().toISOString().split('T')[0]
+        parentName: '',
+        startDate: new Date().toISOString().split('T')[0],
+        avatar: `https://picsum.photos/seed/${Date.now()}/200`
       });
       setIsModalOpen(true);
   };
@@ -72,9 +83,11 @@ export const StudentsPage = () => {
       setFormData({
           fullName: student.fullName,
           grade: student.grade,
-          status: student.status,
+          status: student.status, // Load status hiện tại của học sinh vào form
           phone: student.phone || '',
-          startDate: student.startDate
+          parentName: student.parentName || '',
+          startDate: student.startDate,
+          avatar: student.avatar
       });
       setIsEditMode(true);
       setIsModalOpen(true);
@@ -86,47 +99,66 @@ export const StudentsPage = () => {
         return;
     }
 
-    if (isEditMode && selectedStudent) {
-        const updatedStudent: Student = {
-            ...selectedStudent,
-            fullName: formData.fullName,
-            grade: formData.grade as Grade,
-            status: formData.status as StudentStatus,
-            phone: formData.phone,
-            startDate: formData.startDate || selectedStudent.startDate
-        };
-        await studentService.update(updatedStudent);
-        setToast({msg: "Cập nhật thông tin thành công", type: 'success'});
-    } else {
-        const newStudent: Student = {
-            id: Date.now().toString(),
-            fullName: formData.fullName || '',
-            grade: formData.grade as Grade,
-            status: formData.status as StudentStatus,
-            startDate: formData.startDate || '',
-            avatar: `https://picsum.photos/seed/${Date.now()}/200`,
-            phone: formData.phone
-        };
-        await studentService.add(newStudent);
-        setToast({msg: "Thêm học sinh thành công", type: 'success'});
-    }
+    // Default avatar if empty
+    const finalAvatar = formData.avatar || `https://picsum.photos/seed/${Date.now()}/200`;
 
-    setIsModalOpen(false);
-    loadStudents();
+    try {
+        if (isEditMode && selectedStudent) {
+            // Update logic
+            const updatedStudent: Student = {
+                ...selectedStudent,
+                fullName: formData.fullName,
+                grade: formData.grade as Grade,
+                status: formData.status as StudentStatus, // Quan trọng: Cập nhật status mới
+                phone: formData.phone,
+                parentName: formData.parentName,
+                startDate: formData.startDate || selectedStudent.startDate,
+                avatar: finalAvatar
+            };
+            
+            await studentService.update(updatedStudent);
+            setToast({msg: "Cập nhật thông tin thành công", type: 'success'});
+        } else {
+            // Add logic
+            const newStudent: Student = {
+                id: Date.now().toString(), // Backend sẽ ghi đè ID này
+                fullName: formData.fullName || '',
+                grade: formData.grade as Grade,
+                status: formData.status as StudentStatus,
+                startDate: formData.startDate || '',
+                avatar: finalAvatar,
+                phone: formData.phone,
+                parentName: formData.parentName
+            };
+            await studentService.add(newStudent);
+            setToast({msg: "Thêm học sinh thành công", type: 'success'});
+        }
+
+        setIsModalOpen(false);
+        // Tải lại danh sách để đồng bộ dữ liệu mới nhất từ Backend
+        loadStudents(); 
+    } catch (error) {
+        console.error("Save error:", error);
+        setToast({msg: "Có lỗi xảy ra khi lưu dữ liệu", type: 'error'});
+    }
   };
 
   const handleDelete = async (id: string) => {
     if(window.confirm('Bạn có chắc muốn xóa học sinh này không?')) {
-        await studentService.delete(id);
-        setToast({msg: "Đã xóa học sinh", type: 'success'});
-        loadStudents();
+        try {
+            await studentService.delete(id);
+            setToast({msg: "Đã xóa học sinh", type: 'success'});
+            loadStudents();
+        } catch (error) {
+             setToast({msg: "Lỗi khi xóa học sinh", type: 'error'});
+        }
     }
   };
 
   const handleExport = () => {
     const csvContent = "data:text/csv;charset=utf-8," 
-        + "ID,Ten,Lop,TrangThai,NgayNhapHoc\n"
-        + students.map(e => `${e.id},${e.fullName},${e.grade},${e.status},${e.startDate}`).join("\n");
+        + "ID,Ten,Lop,TrangThai,NgayNhapHoc,PhuHuynh,SDT\n"
+        + students.map(e => `${e.id},${e.fullName},${e.grade},${e.status},${e.startDate},${e.parentName || ''},${e.phone || ''}`).join("\n");
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
@@ -219,7 +251,7 @@ export const StudentsPage = () => {
                                 <td className="py-4 px-6 text-slate-600 whitespace-nowrap">{new Date(s.startDate).toLocaleDateString('vi-VN')}</td>
                                 <td className="py-4 px-6 whitespace-nowrap">
                                     <Badge color={s.status === StudentStatus.ACTIVE ? 'green' : 'red'}>
-                                        {s.status === StudentStatus.ACTIVE ? 'Đang học' : 'Đã nghỉ'}
+                                        {s.status === StudentStatus.ACTIVE ? 'Đang học' : (s.status === StudentStatus.GRADUATED ? 'Đã tốt nghiệp' : 'Đã nghỉ')}
                                     </Badge>
                                 </td>
                                 <td className="py-4 px-6 text-right whitespace-nowrap">
@@ -247,18 +279,87 @@ export const StudentsPage = () => {
         </div>
       </Card>
 
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={isEditMode ? "Cập nhật thông tin học sinh" : "Thêm học sinh mới"}>
-          <Input label="Họ và tên" value={formData.fullName} onChange={(e: any) => setFormData({...formData, fullName: e.target.value})} />
-          <Select 
-            label="Lớp" 
-            options={Object.values(Grade).map(g => ({ label: `Lớp ${g}`, value: g }))}
-            value={formData.grade}
-            onChange={(e: any) => setFormData({...formData, grade: e.target.value})}
-          />
-          <Input label="Số điện thoại" value={formData.phone} onChange={(e: any) => setFormData({...formData, phone: e.target.value})} />
-          <Input label="Ngày nhập học" type="date" value={formData.startDate} onChange={(e: any) => setFormData({...formData, startDate: e.target.value})} />
-          <div className="flex justify-end gap-2 mt-6">
-              <Button variant="ghost" onClick={() => setIsModalOpen(false)}>Hủy</Button>
+      {/* Add/Edit Modal */}
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={isEditMode ? "Cập nhật thông tin học sinh" : "Thêm học sinh mới"} maxWidth="sm:max-w-2xl">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              
+              {/* Left Column: Avatar & Basic Info */}
+              <div className="md:col-span-1 flex flex-col items-center gap-4 border-b md:border-b-0 md:border-r border-slate-100 pb-4 md:pb-0 md:pr-4">
+                  <div className="relative group">
+                      <Avatar src={formData.avatar} alt="Avatar" fallback={formData.fullName} className="w-24 h-24 text-2xl" />
+                      <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                          <span className="text-white text-xs">Ảnh đại diện</span>
+                      </div>
+                  </div>
+                  <div className="w-full">
+                      <label className="block text-xs font-medium text-slate-500 mb-1">Link Ảnh đại diện</label>
+                      <input 
+                        className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                        value={formData.avatar}
+                        onChange={(e) => setFormData({...formData, avatar: e.target.value})}
+                        placeholder="https://..."
+                      />
+                  </div>
+              </div>
+
+              {/* Right Column: Detailed Form */}
+              <div className="md:col-span-2 space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="sm:col-span-2">
+                        <Input 
+                            label="Họ và tên" 
+                            value={formData.fullName} 
+                            onChange={(e: any) => setFormData({...formData, fullName: e.target.value})} 
+                            placeholder="Nhập họ tên học sinh"
+                        />
+                      </div>
+                      
+                      <Select 
+                        label="Lớp" 
+                        options={Object.values(Grade).map(g => ({ label: `Lớp ${g}`, value: g }))}
+                        value={formData.grade}
+                        onChange={(e: any) => setFormData({...formData, grade: e.target.value})}
+                      />
+                      
+                      <Select 
+                        label="Trạng thái" 
+                        options={[
+                            { label: 'Đang học', value: StudentStatus.ACTIVE },
+                            { label: 'Đã nghỉ', value: StudentStatus.DROPPED },
+                            { label: 'Đã tốt nghiệp', value: StudentStatus.GRADUATED }
+                        ]}
+                        value={formData.status}
+                        onChange={(e: any) => setFormData({...formData, status: e.target.value})}
+                      />
+                      
+                      <Input 
+                        label="Số điện thoại" 
+                        value={formData.phone} 
+                        onChange={(e: any) => setFormData({...formData, phone: e.target.value})} 
+                        placeholder="09..."
+                      />
+
+                      <Input 
+                        label="Ngày nhập học" 
+                        type="date" 
+                        value={formData.startDate} 
+                        onChange={(e: any) => setFormData({...formData, startDate: e.target.value})} 
+                      />
+
+                      <div className="sm:col-span-2">
+                          <Input 
+                            label="Họ tên phụ huynh" 
+                            value={formData.parentName} 
+                            onChange={(e: any) => setFormData({...formData, parentName: e.target.value})} 
+                            placeholder="Nhập tên phụ huynh (nếu có)"
+                        />
+                      </div>
+                  </div>
+              </div>
+          </div>
+
+          <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-slate-100">
+              <Button variant="ghost" onClick={() => setIsModalOpen(false)}>Hủy bỏ</Button>
               <Button onClick={handleSaveStudent}>{isEditMode ? "Lưu thay đổi" : "Tạo mới"}</Button>
           </div>
       </Modal>
@@ -273,11 +374,14 @@ export const StudentsPage = () => {
                   <div className="flex flex-wrap justify-center sm:justify-start gap-2 mt-1">
                       <Badge color="indigo">Lớp {selectedStudent.grade}</Badge>
                       <Badge color={selectedStudent.status === StudentStatus.ACTIVE ? 'green' : 'red'}>
-                         {selectedStudent.status === StudentStatus.ACTIVE ? 'Đang học' : 'Đã nghỉ'}
+                         {selectedStudent.status === StudentStatus.ACTIVE ? 'Đang học' : (selectedStudent.status === StudentStatus.GRADUATED ? 'Đã tốt nghiệp' : 'Đã nghỉ')}
                       </Badge>
                   </div>
-                  <p className="text-sm text-slate-500 mt-2">📞 {selectedStudent.phone || 'Chưa cập nhật SĐT'}</p>
-                  <p className="text-sm text-slate-500">📅 Ngày nhập học: {selectedStudent.startDate}</p>
+                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-sm text-slate-500">
+                      <p>📞 SĐT: <span className="text-slate-700 font-medium">{selectedStudent.phone || '---'}</span></p>
+                      <p>📅 Nhập học: <span className="text-slate-700 font-medium">{selectedStudent.startDate}</span></p>
+                      <p className="sm:col-span-2">👨‍👩‍👧 Phụ huynh: <span className="text-slate-700 font-medium">{selectedStudent.parentName || '---'}</span></p>
+                  </div>
                </div>
             </div>
 

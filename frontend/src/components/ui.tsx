@@ -45,7 +45,7 @@ export const Select = ({ label, options, ...props }: any) => (
           <option key={opt.value} value={opt.value}>{opt.label}</option>
         ))}
       </select>
-      <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-gray-500">
+      <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-gray-500">
         <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
       </div>
     </div>
@@ -191,26 +191,38 @@ export const Pagination = ({ currentPage, totalPages, onPageChange, totalItems, 
 export const Modal = ({ isOpen, onClose, title, children, maxWidth = 'sm:max-w-lg' }: any) => {
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 transition-opacity" aria-hidden="true">
-          <div className="absolute inset-0 bg-gray-900 opacity-60" onClick={onClose}></div>
+    <div className="fixed inset-0 z-[100] overflow-y-auto">
+      <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+        
+        {/* Background Overlay */}
+        <div className="fixed inset-0 transition-opacity" aria-hidden="true" onClick={onClose}>
+          <div className="absolute inset-0 bg-gray-900 opacity-60"></div>
         </div>
+
+        {/* Center Trick */}
         <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-        <div className={`inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle ${maxWidth} w-full`}>
-          <div className="flex justify-between items-center px-4 pt-4 sm:px-6">
-            <h3 className="text-lg leading-6 font-medium text-gray-900">{title}</h3>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-500 focus:outline-none">
+
+        {/* Modal Panel */}
+        <div 
+          className={`inline-block align-bottom bg-white rounded-2xl text-left shadow-xl transform transition-all sm:my-8 sm:align-middle ${maxWidth} w-full relative`}
+          role="dialog" 
+          aria-modal="true" 
+          aria-labelledby="modal-headline"
+        >
+          {/* Header */}
+          <div className="flex justify-between items-center px-6 py-4 border-b border-gray-100">
+            <h3 className="text-lg leading-6 font-bold text-gray-900" id="modal-headline">{title}</h3>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-500 hover:bg-gray-100 p-2 rounded-full transition-colors focus:outline-none">
               <span className="sr-only">Close</span>
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
-          <div className="bg-white px-4 pt-2 pb-4 sm:p-6 sm:pb-4">
-              <div className="mt-2">
-                {children}
-              </div>
+          
+          {/* Body */}
+          <div className="bg-white px-6 py-4">
+              {children}
           </div>
         </div>
       </div>
@@ -225,7 +237,7 @@ export const Toast = ({ message, type, onClose }: {message: string, type: 'succe
     }, [onClose]);
 
     return (
-        <div className={`fixed bottom-5 right-5 z-50 px-6 py-3 rounded-lg shadow-lg text-white font-medium flex items-center gap-2 animate-bounce-in ${type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
+        <div className={`fixed bottom-5 right-5 z-[110] px-6 py-3 rounded-lg shadow-lg text-white font-medium flex items-center gap-2 animate-bounce-in ${type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
             <span>{type === 'success' ? '✓' : '⚠'}</span>
             {message}
         </div>
