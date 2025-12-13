@@ -20,6 +20,7 @@ export interface Student {
   avatar: string;
   grade: Grade;
   startDate: string;
+  endDate?: string; // Ngày kết thúc/nghỉ học
   status: StudentStatus;
   parentName?: string;
   phone?: string;
@@ -33,7 +34,8 @@ export enum PaymentMethod {
 export enum PaymentStatus {
   PAID = 'Paid',
   UNPAID = 'Unpaid',
-  PENDING = 'Pending'
+  PENDING = 'Pending',
+  EXEMPT = 'Exempt' // Thêm trạng thái Miễn học phí
 }
 
 export interface TuitionRecord {
@@ -44,12 +46,22 @@ export interface TuitionRecord {
   datePaid?: string;
   method?: PaymentMethod;
   status: PaymentStatus;
+  note?: string; // Ghi chú (ví dụ: miễn giảm, nộp thiếu...)
+}
+
+export enum DocumentCategory {
+  LEARNING_MATERIAL = 'Tài liệu học tập',
+  SYLLABUS = 'Đề cương',
+  EXAM = 'Đề thi',
+  GIFTED_EXAM = 'Đề thi HSG',
+  OTHER = 'Khác'
 }
 
 export interface DocumentFile {
   id: string;
   title: string;
   type: 'PDF' | 'DOCX' | 'XLSX' | 'IMG';
+  category?: DocumentCategory | string; // Thêm trường phân loại
   uploadDate: string;
   url: string;
   size: string;

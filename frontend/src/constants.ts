@@ -9,9 +9,9 @@ export const MOCK_STUDENTS: Student[] = [
 ];
 
 export const MOCK_TUITION: TuitionRecord[] = [
-  { id: 't1', studentId: '1', month: '2023-10', amount: 1500000, status: PaymentStatus.PAID, datePaid: '2023-10-05', method: 'Transfer' as any },
-  { id: 't2', studentId: '2', month: '2023-10', amount: 2000000, status: PaymentStatus.UNPAID },
-  { id: 't3', studentId: '1', month: '2023-09', amount: 1500000, status: PaymentStatus.PAID, datePaid: '2023-09-05', method: 'Cash' as any },
+  { id: 't1', studentId: '1', month: '2023-10', amount: 400000, status: PaymentStatus.PAID, datePaid: '2023-10-05', method: 'Transfer' as any },
+  { id: 't2', studentId: '2', month: '2023-10', amount: 400000, status: PaymentStatus.UNPAID },
+  { id: 't3', studentId: '1', month: '2023-09', amount: 400000, status: PaymentStatus.PAID, datePaid: '2023-09-05', method: 'Cash' as any },
 ];
 
 export const MOCK_COURSES: Course[] = [

@@ -8,6 +8,7 @@ export const StudentsPage = () => {
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterClass, setFilterClass] = useState('All');
+  const [filterStatus, setFilterStatus] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
   
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -28,6 +29,7 @@ export const StudentsPage = () => {
     phone: '',
     parentName: '',
     startDate: new Date().toISOString().split('T')[0],
+    endDate: '',
     avatar: ''
   });
 
@@ -37,7 +39,7 @@ export const StudentsPage = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [filterClass, searchTerm]);
+  }, [filterClass, filterStatus, searchTerm]);
 
   const loadStudents = async () => {
     setLoading(true);
@@ -51,6 +53,31 @@ export const StudentsPage = () => {
         setLoading(false);
     }
   };
+
+  // --- Logic Lọc và Sắp xếp (Di chuyển lên trên để handleExport có thể sử dụng) ---
+  const filteredStudents = students.filter(s => {
+      const matchGrade = filterClass === 'All' || s.grade === filterClass;
+      const matchStatus = filterStatus === 'All' || s.status === filterStatus;
+      const matchSearch = s.fullName.toLowerCase().includes(searchTerm.toLowerCase());
+      return matchGrade && matchStatus && matchSearch;
+  });
+
+  const sortedStudents = [...filteredStudents].sort((a, b) => {
+      const aActive = a.status === StudentStatus.ACTIVE;
+      const bActive = b.status === StudentStatus.ACTIVE;
+
+      if (aActive && !bActive) return -1;
+      if (!aActive && bActive) return 1;
+
+      const gradeDiff = parseInt(b.grade) - parseInt(a.grade);
+      if (gradeDiff !== 0) return gradeDiff;
+
+      return a.fullName.localeCompare(b.fullName, 'vi', { sensitivity: 'base' });
+  });
+
+  const totalPages = Math.ceil(sortedStudents.length / ITEMS_PER_PAGE);
+  const currentStudents = sortedStudents.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+  // ---------------------------------------------------------------------------
 
   const handleViewStudent = async (student: Student) => {
     setSelectedStudent(student);
@@ -73,6 +100,7 @@ export const StudentsPage = () => {
         phone: '',
         parentName: '',
         startDate: new Date().toISOString().split('T')[0],
+        endDate: '',
         avatar: `https://picsum.photos/seed/${Date.now()}/200`
       });
       setIsModalOpen(true);
@@ -83,10 +111,11 @@ export const StudentsPage = () => {
       setFormData({
           fullName: student.fullName,
           grade: student.grade,
-          status: student.status, // Load status hiện tại của học sinh vào form
+          status: student.status, 
           phone: student.phone || '',
           parentName: student.parentName || '',
           startDate: student.startDate,
+          endDate: student.endDate || '',
           avatar: student.avatar
       });
       setIsEditMode(true);
@@ -99,33 +128,33 @@ export const StudentsPage = () => {
         return;
     }
 
-    // Default avatar if empty
     const finalAvatar = formData.avatar || `https://picsum.photos/seed/${Date.now()}/200`;
+    const finalEndDate = formData.status === StudentStatus.ACTIVE ? '' : formData.endDate;
 
     try {
         if (isEditMode && selectedStudent) {
-            // Update logic
             const updatedStudent: Student = {
                 ...selectedStudent,
                 fullName: formData.fullName,
                 grade: formData.grade as Grade,
-                status: formData.status as StudentStatus, // Quan trọng: Cập nhật status mới
+                status: formData.status as StudentStatus,
                 phone: formData.phone,
                 parentName: formData.parentName,
                 startDate: formData.startDate || selectedStudent.startDate,
+                endDate: finalEndDate,
                 avatar: finalAvatar
             };
             
             await studentService.update(updatedStudent);
             setToast({msg: "Cập nhật thông tin thành công", type: 'success'});
         } else {
-            // Add logic
             const newStudent: Student = {
-                id: Date.now().toString(), // Backend sẽ ghi đè ID này
+                id: Date.now().toString(),
                 fullName: formData.fullName || '',
                 grade: formData.grade as Grade,
                 status: formData.status as StudentStatus,
                 startDate: formData.startDate || '',
+                endDate: finalEndDate,
                 avatar: finalAvatar,
                 phone: formData.phone,
                 parentName: formData.parentName
@@ -135,7 +164,6 @@ export const StudentsPage = () => {
         }
 
         setIsModalOpen(false);
-        // Tải lại danh sách để đồng bộ dữ liệu mới nhất từ Backend
         loadStudents(); 
     } catch (error) {
         console.error("Save error:", error);
@@ -156,9 +184,10 @@ export const StudentsPage = () => {
   };
 
   const handleExport = () => {
+    // Sử dụng sortedStudents thay vì students gốc để xuất theo thứ tự hiển thị
     const csvContent = "data:text/csv;charset=utf-8," 
-        + "ID,Ten,Lop,TrangThai,NgayNhapHoc,PhuHuynh,SDT\n"
-        + students.map(e => `${e.id},${e.fullName},${e.grade},${e.status},${e.startDate},${e.parentName || ''},${e.phone || ''}`).join("\n");
+        + "ID,Ten,Lop,TrangThai,NgayNhapHoc,NgayKetThuc,PhuHuynh,SDT\n"
+        + sortedStudents.map(e => `${e.id},${e.fullName},${e.grade},${e.status},${e.startDate},${e.endDate || ''},${e.parentName || ''},${e.phone || ''}`).join("\n");
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
@@ -166,16 +195,6 @@ export const StudentsPage = () => {
     document.body.appendChild(link);
     link.click();
   };
-
-  const filteredStudents = students.filter(s => {
-      const matchGrade = filterClass === 'All' || s.grade === filterClass;
-      const matchSearch = s.fullName.toLowerCase().includes(searchTerm.toLowerCase());
-      return matchGrade && matchSearch;
-  });
-
-  const sortedStudents = [...filteredStudents].sort((a, b) => parseInt(b.grade) - parseInt(a.grade));
-  const totalPages = Math.ceil(sortedStudents.length / ITEMS_PER_PAGE);
-  const currentStudents = sortedStudents.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   return (
     <div className="space-y-6">
@@ -194,26 +213,51 @@ export const StudentsPage = () => {
 
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row gap-4 justify-between items-center">
           <div className="relative w-full sm:max-w-md">
+              <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+              </span>
               <input
                   type="text"
                   placeholder="Tìm kiếm học sinh theo tên..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-4 pr-4 py-2 w-full border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all placeholder-slate-400 text-slate-700"
+                  className="pl-10 pr-4 py-2 w-full border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all placeholder-slate-400 text-slate-700"
               />
           </div>
 
-          <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="flex items-center gap-3 w-full sm:w-auto flex-wrap sm:flex-nowrap">
                <span className="text-sm font-medium text-slate-500 whitespace-nowrap hidden sm:inline">Lọc theo:</span>
-               <div className="relative w-full sm:w-48">
+               
+               {/* Status Filter */}
+               <div className="relative w-full sm:w-40">
+                   <select
+                      value={filterStatus}
+                      onChange={(e) => setFilterStatus(e.target.value)}
+                      className="w-full pl-3 pr-8 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white cursor-pointer appearance-none text-sm text-slate-700"
+                   >
+                      <option value="All">Tất cả trạng thái</option>
+                      <option value={StudentStatus.ACTIVE}>Đang học</option>
+                      <option value={StudentStatus.DROPPED}>Đã nghỉ</option>
+                      <option value={StudentStatus.GRADUATED}>Đã tốt nghiệp</option>
+                   </select>
+                   <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-slate-500">
+                      <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
+                   </div>
+               </div>
+
+               {/* Grade Filter */}
+               <div className="relative w-full sm:w-40">
                    <select
                       value={filterClass}
                       onChange={(e) => setFilterClass(e.target.value)}
-                      className="w-full pl-4 pr-10 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white cursor-pointer appearance-none"
+                      className="w-full pl-3 pr-8 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white cursor-pointer appearance-none text-sm text-slate-700"
                    >
                       <option value="All">Tất cả các lớp</option>
                       {Object.values(Grade).map(g => <option key={g} value={g}>Lớp {g}</option>)}
                    </select>
+                   <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-slate-500">
+                      <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
+                   </div>
                </div>
           </div>
       </div>
@@ -227,7 +271,7 @@ export const StudentsPage = () => {
                             <th className="py-4 px-6 whitespace-nowrap">STT</th>
                             <th className="py-4 px-6 whitespace-nowrap">Họ tên & Liên hệ</th>
                             <th className="py-4 px-6 whitespace-nowrap">Lớp</th>
-                            <th className="py-4 px-6 whitespace-nowrap">Ngày nhập học</th>
+                            <th className="py-4 px-6 whitespace-nowrap">Thời gian</th>
                             <th className="py-4 px-6 whitespace-nowrap">Trạng thái</th>
                             <th className="py-4 px-6 text-right whitespace-nowrap">Thao tác</th>
                         </tr>
@@ -248,7 +292,12 @@ export const StudentsPage = () => {
                                     </div>
                                 </td>
                                 <td className="py-4 px-6 whitespace-nowrap"><Badge color="indigo">Lớp {s.grade}</Badge></td>
-                                <td className="py-4 px-6 text-slate-600 whitespace-nowrap">{new Date(s.startDate).toLocaleDateString('vi-VN')}</td>
+                                <td className="py-4 px-6 text-slate-600 whitespace-nowrap">
+                                    <div className="flex flex-col text-xs">
+                                        <span>Từ: {new Date(s.startDate).toLocaleDateString('vi-VN')}</span>
+                                        {s.endDate && <span className="text-red-400">Đến: {new Date(s.endDate).toLocaleDateString('vi-VN')}</span>}
+                                    </div>
+                                </td>
                                 <td className="py-4 px-6 whitespace-nowrap">
                                     <Badge color={s.status === StudentStatus.ACTIVE ? 'green' : 'red'}>
                                         {s.status === StudentStatus.ACTIVE ? 'Đang học' : (s.status === StudentStatus.GRADUATED ? 'Đã tốt nghiệp' : 'Đã nghỉ')}
@@ -263,6 +312,14 @@ export const StudentsPage = () => {
                                 </td>
                             </tr>
                         ))}
+                        {!loading && currentStudents.length === 0 && (
+                            <tr><td colSpan={6} className="py-12 text-center text-slate-400">
+                                <div className="flex flex-col items-center">
+                                    <span className="text-4xl mb-2">🔍</span>
+                                    <span>Không tìm thấy học sinh nào phù hợp.</span>
+                                </div>
+                            </td></tr>
+                        )}
                     </tbody>
                 </table>
             </div>
@@ -346,6 +403,16 @@ export const StudentsPage = () => {
                         onChange={(e: any) => setFormData({...formData, startDate: e.target.value})} 
                       />
 
+                      {/* Chỉ hiện ngày nghỉ khi trạng thái không phải Active */}
+                      {formData.status !== StudentStatus.ACTIVE && (
+                          <Input 
+                            label={formData.status === StudentStatus.GRADUATED ? "Ngày tốt nghiệp" : "Ngày nghỉ học"}
+                            type="date" 
+                            value={formData.endDate} 
+                            onChange={(e: any) => setFormData({...formData, endDate: e.target.value})} 
+                          />
+                      )}
+
                       <div className="sm:col-span-2">
                           <Input 
                             label="Họ tên phụ huynh" 
@@ -380,6 +447,7 @@ export const StudentsPage = () => {
                   <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-sm text-slate-500">
                       <p>📞 SĐT: <span className="text-slate-700 font-medium">{selectedStudent.phone || '---'}</span></p>
                       <p>📅 Nhập học: <span className="text-slate-700 font-medium">{selectedStudent.startDate}</span></p>
+                      {selectedStudent.endDate && <p>🏁 Kết thúc: <span className="text-red-500 font-medium">{selectedStudent.endDate}</span></p>}
                       <p className="sm:col-span-2">👨‍👩‍👧 Phụ huynh: <span className="text-slate-700 font-medium">{selectedStudent.parentName || '---'}</span></p>
                   </div>
                </div>
@@ -403,8 +471,12 @@ export const StudentsPage = () => {
                                       <td className="py-2.5 font-medium">{t.month}</td>
                                       <td className="py-2.5">{t.amount.toLocaleString()}đ</td>
                                       <td className="py-2.5 text-right">
-                                          <span className={`px-2 py-0.5 rounded text-xs font-bold ${t.status === PaymentStatus.PAID ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                              {t.status === PaymentStatus.PAID ? 'Đã đóng' : 'Chưa đóng'}
+                                          <span className={`px-2 py-0.5 rounded text-xs font-bold ${
+                                              t.status === PaymentStatus.PAID ? 'bg-green-100 text-green-700' : 
+                                              t.status === PaymentStatus.EXEMPT ? 'bg-gray-100 text-gray-600' :
+                                              'bg-red-100 text-red-700'
+                                          }`}>
+                                              {t.status === PaymentStatus.PAID ? 'Đã đóng' : t.status === PaymentStatus.EXEMPT ? 'Miễn phí' : 'Chưa đóng'}
                                           </span>
                                       </td>
                                   </tr>

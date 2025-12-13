@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 const documentSchema = new mongoose.Schema({
   title: { type: String, required: true },
   type: { type: String, required: true },
+  category: { type: String }, // New field
   uploadDate: { type: String, required: true },
   url: { type: String },
   size: { type: String },

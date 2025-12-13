@@ -5,6 +5,7 @@ const studentSchema = new mongoose.Schema({
   avatar: { type: String },
   grade: { type: String, required: true },
   startDate: { type: String, required: true },
+  endDate: { type: String }, // Ngày kết thúc khóa học/nghỉ học
   status: { type: String, required: true },
   phone: { type: String },
   parentName: { type: String }

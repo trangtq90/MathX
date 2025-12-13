@@ -6,7 +6,8 @@ const tuitionSchema = new mongoose.Schema({
   amount: { type: Number, required: true },
   status: { type: String, required: true },
   datePaid: { type: String },
-  method: { type: String }
+  method: { type: String },
+  note: { type: String } // Ghi chú thêm
 }, { timestamps: true });
 
 tuitionSchema.set('toJSON', {
